@@ -5,10 +5,7 @@
       <p>Manage restocking orders based on demand forecasts</p>
     </div>
 
-    <div
-      v-if="successMessage"
-      class="success-banner"
-    >
+    <div v-if="successMessage" class="success-banner">
       {{ successMessage }}
     </div>
 
@@ -48,7 +45,10 @@
             ></div>
           </div>
           <span class="utilization-text">
-            ${{ selectedTotalCost.toLocaleString() }} used of ${{ budget.toLocaleString() }} &middot; {{ selectedItems.length }} items selected
+            ${{ selectedTotalCost.toLocaleString() }} used of ${{
+              budget.toLocaleString()
+            }}
+            &middot; {{ selectedItems.length }} items selected
           </span>
         </div>
       </div>
@@ -56,7 +56,9 @@
 
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title">Recommended Items ({{ selectedItems.length }})</h3>
+        <h3 class="card-title">
+          Recommended Items ({{ selectedItems.length }})
+        </h3>
       </div>
 
       <div v-if="loading" class="loading">Loading...</div>
@@ -99,13 +101,16 @@
                   <span :class="{ strikethrough: !row.selected }">
                     ${{ row.total_cost.toLocaleString() }}
                   </span>
-                  <span v-if="!row.selected" class="over-budget-note">Over budget</span>
+                  <span v-if="!row.selected" class="over-budget-note"
+                    >Over budget</span
+                  >
                 </td>
                 <td>{{ row.lead_time_days }} days</td>
               </tr>
               <tr v-if="recommendationRows.length === 0">
                 <td colspan="9" class="empty-state">
-                  No items recommended at current budget. Increase budget or check demand data.
+                  No items recommended at current budget. Increase budget or
+                  check demand data.
                 </td>
               </tr>
             </tbody>
@@ -114,7 +119,9 @@
 
         <div class="action-bar">
           <span class="action-summary">
-            {{ selectedItems.length }} items &middot; Total: ${{ selectedTotalCost.toLocaleString() }}
+            {{ selectedItems.length }} items &middot; Total: ${{
+              selectedTotalCost.toLocaleString()
+            }}
           </span>
           <button
             class="btn-place-order"
@@ -131,111 +138,112 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
-import { api } from '../api'
+import { ref, computed, onMounted } from "vue";
+import { api } from "../api";
 
 const LEAD_TIME_BY_CATEGORY = {
-  'Circuit Boards': 14,
-  'Sensors': 10,
-  'Actuators': 12,
-  'Controllers': 10,
-  'Power Supplies': 7,
-  'Industrial Parts': 14,
-  'Mechanical': 12,
-  'Filters': 7,
-  'General': 14
-}
+  "Circuit Boards": 14,
+  Sensors: 10,
+  Actuators: 12,
+  Controllers: 10,
+  "Power Supplies": 7,
+  "Industrial Parts": 14,
+  Mechanical: 12,
+  Filters: 7,
+  General: 14,
+};
 
 const SKU_PREFIX_CATEGORY = {
-  'PCB': 'Circuit Boards',
-  'CTL': 'Controllers',
-  'PSU': 'Power Supplies',
-  'SNR': 'Sensors',
-  'TMP': 'Sensors',
-  'SRV': 'Actuators',
-  'LIN': 'Actuators',
-  'WDG': 'Industrial Parts',
-  'BRG': 'Mechanical',
-  'GSK': 'Mechanical',
-  'MTR': 'Actuators',
-  'FLT': 'Filters',
-  'VLV': 'Mechanical'
-}
+  PCB: "Circuit Boards",
+  CTL: "Controllers",
+  PSU: "Power Supplies",
+  SNR: "Sensors",
+  TMP: "Sensors",
+  SRV: "Actuators",
+  LIN: "Actuators",
+  WDG: "Industrial Parts",
+  BRG: "Mechanical",
+  GSK: "Mechanical",
+  MTR: "Actuators",
+  FLT: "Filters",
+  VLV: "Mechanical",
+};
 
 const SKU_PREFIX_UNIT_COST = {
-  'WDG': 45.00,
-  'BRG': 32.50,
-  'GSK': 8.75,
-  'MTR': 385.00,
-  'FLT': 12.50,
-  'VLV': 95.00,
-  'PSU': 78.00,
-  'SNR': 65.00,
-  'CTL': 220.00
-}
+  WDG: 45.0,
+  BRG: 32.5,
+  GSK: 8.75,
+  MTR: 385.0,
+  FLT: 12.5,
+  VLV: 95.0,
+  PSU: 78.0,
+  SNR: 65.0,
+  CTL: 220.0,
+};
 
-const TREND_ORDER = { increasing: 0, stable: 1, decreasing: 2 }
+const TREND_ORDER = { increasing: 0, stable: 1, decreasing: 2 };
 
 function getCategoryForSku(sku, invItem) {
-  if (invItem) return invItem.category
-  const prefix = sku.split('-')[0]
-  return SKU_PREFIX_CATEGORY[prefix] || 'General'
+  if (invItem) return invItem.category;
+  const prefix = sku.split("-")[0];
+  return SKU_PREFIX_CATEGORY[prefix] || "General";
 }
 
 function getUnitCostForSku(sku, invItem) {
-  if (invItem) return invItem.unit_cost
-  const prefix = sku.split('-')[0]
-  return SKU_PREFIX_UNIT_COST[prefix] || 50.00
+  if (invItem) return invItem.unit_cost;
+  const prefix = sku.split("-")[0];
+  return SKU_PREFIX_UNIT_COST[prefix] || 50.0;
 }
 
 export default {
-  name: 'Restocking',
+  name: "Restocking",
   setup() {
-    const budget = ref(150000)
-    const loading = ref(false)
-    const error = ref(null)
-    const submitting = ref(false)
-    const successMessage = ref('')
-    const successTimer = ref(null)
+    const budget = ref(150000);
+    const loading = ref(false);
+    const error = ref(null);
+    const submitting = ref(false);
+    const successMessage = ref("");
+    const successTimer = ref(null);
 
-    const demandForecasts = ref([])
-    const inventoryItems = ref([])
+    const demandForecasts = ref([]);
+    const inventoryItems = ref([]);
 
     const loadData = async () => {
-      loading.value = true
-      error.value = null
+      loading.value = true;
+      error.value = null;
       try {
         const [forecasts, inventory] = await Promise.all([
           api.getDemandForecasts(),
-          api.getInventory()
-        ])
-        demandForecasts.value = forecasts
-        inventoryItems.value = inventory
+          api.getInventory(),
+        ]);
+        demandForecasts.value = forecasts;
+        inventoryItems.value = inventory;
       } catch (err) {
-        error.value = 'Failed to load data: ' + err.message
+        error.value = "Failed to load data: " + err.message;
       } finally {
-        loading.value = false
+        loading.value = false;
       }
-    }
+    };
 
     const inventoryBySku = computed(() => {
-      const map = {}
+      const map = {};
       for (const item of inventoryItems.value) {
-        map[item.sku] = item
+        map[item.sku] = item;
       }
-      return map
-    })
+      return map;
+    });
 
     const sortedCandidates = computed(() => {
-      const candidates = []
+      const candidates = [];
       for (const forecast of demandForecasts.value) {
-        if (forecast.forecasted_demand <= forecast.current_demand) continue
+        if (forecast.forecasted_demand <= forecast.current_demand) continue;
 
-        const inv = inventoryBySku.value[forecast.item_sku]
-        const restock_qty = forecast.forecasted_demand - forecast.current_demand
-        const unit_cost = getUnitCostForSku(forecast.item_sku, inv)
-        const category = getCategoryForSku(forecast.item_sku, inv)
-        const lead_time_days = LEAD_TIME_BY_CATEGORY[category] ?? 14
+        const inv = inventoryBySku.value[forecast.item_sku];
+        const restock_qty =
+          forecast.forecasted_demand - forecast.current_demand;
+        const unit_cost = getUnitCostForSku(forecast.item_sku, inv);
+        const category = getCategoryForSku(forecast.item_sku, inv);
+        const lead_time_days = LEAD_TIME_BY_CATEGORY[category] ?? 14;
 
         candidates.push({
           sku: forecast.item_sku,
@@ -245,98 +253,102 @@ export default {
           quantity: restock_qty,
           unit_cost,
           total_cost: restock_qty * unit_cost,
-          lead_time_days
-        })
+          lead_time_days,
+        });
       }
 
       candidates.sort((a, b) => {
-        const ta = TREND_ORDER[a.trend] ?? 3
-        const tb = TREND_ORDER[b.trend] ?? 3
-        return ta - tb
-      })
+        const ta = TREND_ORDER[a.trend] ?? 3;
+        const tb = TREND_ORDER[b.trend] ?? 3;
+        return ta - tb;
+      });
 
-      return candidates
-    })
+      return candidates;
+    });
 
     const recommendations = computed(() => {
-      const result = []
-      let remaining = budget.value
+      const result = [];
+      let remaining = budget.value;
 
       for (const item of sortedCandidates.value) {
         if (item.total_cost <= remaining) {
-          result.push({ ...item, selected: true })
-          remaining -= item.total_cost
+          result.push({ ...item, selected: true });
+          remaining -= item.total_cost;
         } else {
-          const affordable_qty = Math.floor(remaining / item.unit_cost)
+          const affordable_qty = Math.floor(remaining / item.unit_cost);
           if (affordable_qty > 0) {
             result.push({
               ...item,
               quantity: affordable_qty,
               total_cost: affordable_qty * item.unit_cost,
-              selected: true
-            })
-            remaining = 0
+              selected: true,
+            });
+            remaining = 0;
           }
-          result.push({ ...item, selected: false })
-          break
+          result.push({ ...item, selected: false });
+          break;
         }
       }
 
-      return result
-    })
+      return result;
+    });
 
-    const selectedItems = computed(() => recommendations.value.filter(r => r.selected))
+    const selectedItems = computed(() =>
+      recommendations.value.filter((r) => r.selected),
+    );
 
     const recommendationRows = computed(() => {
-      let priority = 1
-      return recommendations.value.map(row => ({
+      let priority = 1;
+      return recommendations.value.map((row) => ({
         ...row,
-        priority: row.selected ? priority++ : null
-      }))
-    })
+        priority: row.selected ? priority++ : null,
+      }));
+    });
 
     const selectedTotalCost = computed(() =>
-      selectedItems.value.reduce((sum, item) => sum + item.total_cost, 0)
-    )
+      selectedItems.value.reduce((sum, item) => sum + item.total_cost, 0),
+    );
 
     const utilizationPct = computed(() => {
-      if (budget.value === 0) return 0
-      return Math.min(100, (selectedTotalCost.value / budget.value) * 100)
-    })
+      if (budget.value === 0) return 0;
+      return Math.min(100, (selectedTotalCost.value / budget.value) * 100);
+    });
 
     const placeOrder = async () => {
-      if (selectedItems.value.length === 0 || submitting.value) return
-      submitting.value = true
+      if (selectedItems.value.length === 0 || submitting.value) return;
+      submitting.value = true;
       try {
         const payload = {
-          items: selectedItems.value.map(item => ({
+          items: selectedItems.value.map((item) => ({
             sku: item.sku,
             name: item.name,
             category: item.category,
             quantity: item.quantity,
             unit_cost: item.unit_cost,
             total_cost: item.total_cost,
-            lead_time_days: item.lead_time_days
+            lead_time_days: item.lead_time_days,
           })),
-          total_cost: selectedTotalCost.value
-        }
-        const order = await api.submitRestockingOrder(payload)
+          total_cost: selectedTotalCost.value,
+        };
+        const order = await api.submitRestockingOrder(payload);
 
-        const maxLead = Math.max(...selectedItems.value.map(i => i.lead_time_days))
-        successMessage.value = `Order ${order.order_number} submitted successfully! Estimated delivery in ${maxLead} days.`
+        const maxLead = Math.max(
+          ...selectedItems.value.map((i) => i.lead_time_days),
+        );
+        successMessage.value = `Order ${order.order_number} submitted successfully! Estimated delivery in ${maxLead} days.`;
 
-        if (successTimer.value) clearTimeout(successTimer.value)
+        if (successTimer.value) clearTimeout(successTimer.value);
         successTimer.value = setTimeout(() => {
-          successMessage.value = ''
-        }, 4000)
+          successMessage.value = "";
+        }, 4000);
       } catch (err) {
-        error.value = 'Failed to submit order: ' + err.message
+        error.value = "Failed to submit order: " + err.message;
       } finally {
-        submitting.value = false
+        submitting.value = false;
       }
-    }
+    };
 
-    onMounted(loadData)
+    onMounted(loadData);
 
     return {
       budget,
@@ -348,10 +360,10 @@ export default {
       recommendationRows,
       selectedTotalCost,
       utilizationPct,
-      placeOrder
-    }
-  }
-}
+      placeOrder,
+    };
+  },
+};
 </script>
 
 <style scoped>
@@ -371,8 +383,14 @@ export default {
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .budget-controls {
@@ -476,7 +494,7 @@ export default {
 }
 
 .mono {
-  font-family: 'Menlo', 'Consolas', monospace;
+  font-family: "Menlo", "Consolas", monospace;
   font-size: 0.813rem;
 }
 
@@ -541,7 +559,9 @@ export default {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .budget-card {
