@@ -75,6 +75,34 @@
         </div>
       </div>
     </div>
+
+    <div v-if="restockingOrders.length > 0" class="card">
+      <div class="card-header">
+        <h3 class="card-title">Submitted Restocking Orders ({{ restockingOrders.length }})</h3>
+      </div>
+      <TransitionGroup name="restock-slide" tag="div">
+        <div
+          v-for="order in restockingOrders"
+          :key="order.id"
+          class="restock-order-card"
+        >
+          <div class="restock-order-left">
+            <div class="restock-order-number">{{ order.order_number }}</div>
+            <div class="restock-order-date">{{ formatDate(order.submitted_at) }}</div>
+          </div>
+          <div class="restock-order-middle">
+            <div class="restock-item-count">{{ order.items.length }} item{{ order.items.length !== 1 ? 's' : '' }}</div>
+            <div class="restock-item-names">{{ order.items.slice(0, 3).map(i => i.name).join(', ') }}{{ order.items.length > 3 ? '…' : '' }}</div>
+            <div class="restock-total">${{ order.total_cost.toLocaleString() }}</div>
+          </div>
+          <div class="restock-order-right">
+            <span class="badge info">{{ order.status }}</span>
+            <div class="restock-lead">~{{ getLeadDays(order) }} days lead time</div>
+            <div class="restock-delivery">Est. delivery: {{ formatDelivery(order.estimated_delivery) }}</div>
+          </div>
+        </div>
+      </TransitionGroup>
+    </div>
   </div>
 </template>
 
@@ -95,6 +123,7 @@ export default {
     const loading = ref(true)
     const error = ref(null)
     const orders = ref([])
+    const restockingOrders = ref([])
 
     // Use shared filters
     const {
@@ -153,16 +182,43 @@ export default {
       })
     }
 
-    onMounted(loadOrders)
+    const loadRestockingOrders = async () => {
+      try {
+        restockingOrders.value = await api.getRestockingOrders()
+      } catch (err) {
+        console.error('Failed to load restocking orders:', err)
+      }
+    }
+
+    const getLeadDays = (order) => {
+      const submitted = new Date(order.submitted_at)
+      const delivery = new Date(order.estimated_delivery)
+      if (isNaN(submitted.getTime()) || isNaN(delivery.getTime())) return '—'
+      return Math.round((delivery - submitted) / 86400000)
+    }
+
+    const formatDelivery = (dateString) => {
+      const d = new Date(dateString)
+      if (isNaN(d.getTime())) return dateString
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    }
+
+    onMounted(() => {
+      loadOrders()
+      loadRestockingOrders()
+    })
 
     return {
       t,
       loading,
       error,
       orders,
+      restockingOrders,
       getOrdersByStatus,
       getOrderStatusClass,
       formatDate,
+      formatDelivery,
+      getLeadDays,
       currencySymbol,
       translateProductName,
       translateCustomerName
@@ -275,5 +331,84 @@ export default {
 .item-meta {
   font-size: 0.813rem;
   color: #64748b;
+}
+
+.restock-order-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.restock-order-left {
+  min-width: 130px;
+}
+
+.restock-order-number {
+  font-weight: 700;
+  font-size: 0.938rem;
+  color: #0f172a;
+}
+
+.restock-order-date {
+  font-size: 0.813rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+.restock-order-middle {
+  flex: 1;
+}
+
+.restock-item-count {
+  font-size: 0.813rem;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.restock-item-names {
+  font-size: 0.875rem;
+  color: #334155;
+  margin-top: 0.25rem;
+}
+
+.restock-total {
+  font-size: 0.938rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 0.375rem;
+}
+
+.restock-order-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.375rem;
+  min-width: 160px;
+}
+
+.restock-lead {
+  font-size: 0.813rem;
+  color: #475569;
+}
+
+.restock-delivery {
+  font-size: 0.813rem;
+  color: #64748b;
+}
+
+.restock-slide-enter-active {
+  transition: all 0.4s ease;
+}
+
+.restock-slide-enter-from {
+  opacity: 0;
+  transform: translateY(-12px);
 }
 </style>
