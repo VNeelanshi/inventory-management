@@ -52,3 +52,6 @@ logs/
 
 # Environment variables
 .env
+
+# Claude Code local settings (personal overrides, not for team)
+.claude/settings.local.json
